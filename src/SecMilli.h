@@ -4,14 +4,14 @@
 #include <sys/types.h>
 
 struct SecMilli {
-    uint32_t    secs_;
+    long    secs_;
     unsigned long    millis_;
     SecMilli() : secs_(0), millis_(0) {}
-    SecMilli(uint32_t secs, unsigned long millis) : secs_(secs), millis_(millis) {}
+    SecMilli(long secs, unsigned long millis) : secs_(secs), millis_(millis) {}
     SecMilli operator+(unsigned long millis) {
         if (!millis)
             SecMilli(secs_, millis_);
-        uint32_t secs = secs_ + millis / 1000;
+        long secs = secs_ + millis / 1000;
         unsigned long new_millis = millis_ + millis % 1000;
 
         if (new_millis >= 1000) {
@@ -27,7 +27,8 @@ struct SecMilli {
     bool not_null() {
         return secs_ || millis_;
    }
-    inline unsigned long as_millis() {
+    inline auto as_millis() {
+        std::cout << "as millis: " << secs_ << " millis: " << millis_ << std::endl;
         return secs_ * 1000 + millis_;
     }
     void print() {
