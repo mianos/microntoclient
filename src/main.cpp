@@ -46,7 +46,7 @@ void print_proc() {
 	if (mntp->is_good()) {
 		char buf[100];
 		auto nn = mntp->now();
-		Serial.printf("RESULT: %s\n", nn.as_iso(buf, sizeof(buf)));
+		printf("RESULT: %s at %ld\n", nn.as_iso(buf, sizeof(buf)), millis());
 	}
 }
 

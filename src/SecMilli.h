@@ -27,8 +27,7 @@ struct SecMilli {
     bool not_null() {
         return secs_ || millis_;
    }
-    inline auto as_millis() {
-        std::cout << "as millis: " << secs_ << " millis: " << millis_ << std::endl;
+    inline long as_millis() {
         return secs_ * 1000 + millis_;
     }
     void print() {

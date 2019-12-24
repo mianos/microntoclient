@@ -13,7 +13,6 @@ extern std::string getCurrentTimestamp();
 extern unsigned long millis();
 #else
 #include "arduino_bntp.h"
-#define printf Serial.printf
 #endif
 
 
@@ -92,14 +91,13 @@ public:
             smill_diff += 1000;
             sec_diff -= 1;
         }
-#ifdef unix
-        std::cout << "in sec2: " << sec2
-                  << " in sec1: " << sec1
-                  << " in milli2: " << mill2
-                  << " in milli1: " << mill1
-                  << " sec diff: " << sec_diff
-                  << " milli diff: " << smill_diff
-                  << std::endl;
+#if 1
+        printf("in sec2: %d", sec2);
+        printf(" in sec1: %d", sec1);
+        printf(" in milli2: %d", mill2);
+        printf(" in milli1: %d", mill1);
+        printf(" sec diff:%d ", sec_diff);
+        printf(" milli diff: %d\n", smill_diff);
 #endif
         return SecMilli(sec_diff, smill_diff);
     }
@@ -135,7 +133,7 @@ public:
                 printf("Negative diff ======\n");
             } else {
                 // time from send to now, take this off the total time to mark the local millisecond point the server tx time was.
-                ntp_at = now_millis - diff_millis;
+                ntp_at = now_millis;
 //                std::cout << "Diff time_from_ntp_tx_to_now: " << time_from_ntp_tx_to_now << std::endl;
                 printf("diff_millis: %ld\n", diff_millis);
                 last_ntp = SecMilli(tx_seconds, tx_millis);
