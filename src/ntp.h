@@ -13,6 +13,7 @@ extern std::string getCurrentTimestamp();
 extern unsigned long millis();
 #else
 #include "arduino_bntp.h"
+#define printf Serial.printf
 #endif
 
 
@@ -62,13 +63,11 @@ public:
     }
     SecMilli now() {
         if (state == good || state == receiving_with_sample) {
-            std::cout << "now with good or sample" << std::endl;
 #ifdef unix
            std::lock_guard<std::mutex> guard(at_last_mtx);
 #endif
            return last_ntp + (millis() - ntp_at);
         } else {
-            std::cout << "now none" << std::endl;
             return SecMilli();
         }
    }
@@ -77,13 +76,10 @@ public:
         packet = {};
         packet.li_vn_mode =  0x1b;
         SecMilli current = now();
-        packet.txTm_s = ntp_secs_from_epoch_secs(current.secs_);
-        std::cout << "Sending secs: " << current.secs_ << std::endl;
-        packet.txTm_f = ntp_frac_from_mills(current.millis_);
-        std::cout << "Sending msecs: " << current.millis_ << std::endl;
-        current.print();
-        std::cout << "current: " << getCurrentTimestamp() << std::endl;
-        //ntp_at = millis();
+        if (current.not_null()) {
+            packet.txTm_s = ntp_secs_from_epoch_secs(current.secs_);
+            packet.txTm_f = ntp_frac_from_mills(current.millis_);
+        }
         bntp->send(&packet);
    }
 
@@ -127,27 +123,21 @@ public:
 
         if (!orig_seconds) {
             // set ntp at
-            std::cout << "or s: " << epoch_secs_from_ntp_secs(packet.origTm_s) << " or sec f: " << mills_from_ntp_frac(packet.origTm_f) << std::endl;
             ntp_at = now_millis;
             last_ntp = SecMilli(tx_seconds, tx_millis);
         } else {
-            std::cout << "receive: tx seconds: " << tx_seconds << " from wire: " << packet.txTm_s << std::endl;
-            std::cout << "stratum: " << (unsigned)packet.stratum
-                << " poll " << (unsigned)packet.poll
-                << " precision " << (unsigned)packet.precision
-                << std::endl;
             // get difference between origin and tx
             SecMilli diff = tdiff(tx_seconds, orig_seconds, tx_millis, orig_millis);
             auto diff_millis = diff.as_millis();
-            std::cout << "Difference millis: " << diff_millis << std::endl;
             if (diff_millis < 0) {
-                ntp_at -= diff_millis;
-                std::cout << "Negative diff ======" << std::endl;
+                ntp_at = now_millis;
+                last_ntp = SecMilli(tx_seconds, tx_millis);
+                printf("Negative diff ======\n");
             } else {
-                auto total_time_from_send_to_receive =  now_millis - ntp_at;
-                auto  time_from_ntp_tx_to_now = total_time_from_send_to_receive - diff_millis;
                 // time from send to now, take this off the total time to mark the local millisecond point the server tx time was.
-                ntp_at = now_millis - time_from_ntp_tx_to_now;
+                ntp_at = now_millis - diff_millis;
+//                std::cout << "Diff time_from_ntp_tx_to_now: " << time_from_ntp_tx_to_now << std::endl;
+                printf("diff_millis: %ld\n", diff_millis);
                 last_ntp = SecMilli(tx_seconds, tx_millis);
                 if (!on_good_signalled) {
                     if (on_time_good != nullptr) {
