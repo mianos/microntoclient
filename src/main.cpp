@@ -37,7 +37,6 @@ Task *print_task;
 
 void receive_proc() {
 	if (mntp->receive()) {
-        Serial.println("GOT");
 		receive_task->disable();
 	}
 }
@@ -85,9 +84,9 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
     mntp = new MiniNtp{"131.84.1.10", [](){ printf("time good\n"); }};
-	get_time_task = new Task(5000, TASK_FOREVER, get_time, &ts, true);
-	receive_task = new Task(1000, 3, receive_proc, &ts);
-	print_task = new Task(1000, TASK_FOREVER, print_proc, &ts, true);
+	get_time_task = new Task(13000, TASK_FOREVER, get_time, &ts, true);
+	receive_task = new Task(10, 20, receive_proc, &ts);
+	print_task = new Task(200, TASK_FOREVER, print_proc, &ts, true);
   
   delay(1500);
 #if 0

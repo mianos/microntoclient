@@ -23,6 +23,7 @@ class MiniNtp {
     BasicNtp *bntp;
     SecMilli last_ntp;
     unsigned long ntp_at;
+    unsigned long sent_at;
     
     enum {ready=0, receiving_sample=1, receiving_with_sample=2, good=3} state;
     void    (*on_time_good)();
@@ -79,23 +80,29 @@ public:
             packet.txTm_s = ntp_secs_from_epoch_secs(current.secs_);
             packet.txTm_f = ntp_frac_from_mills(current.millis_);
         }
+        sent_at = millis();
         bntp->send(&packet);
    }
 
     SecMilli    tdiff(uint32_t sec2, uint32_t sec1, uint32_t mill2, uint32_t mill1) {
-        int32_t sec_diff = sec2 - sec1;
-        int32_t smill_diff = mill2 - mill1;
-        sec_diff += smill_diff / 1000;
-        smill_diff = smill_diff % 1000;
-        if (smill_diff < 0) {
-            smill_diff += 1000;
-            sec_diff -= 1;
-        }
-#if 1
+#if 0
         printf("in sec2: %d", sec2);
         printf(" in sec1: %d", sec1);
         printf(" in milli2: %d", mill2);
         printf(" in milli1: %d", mill1);
+#endif
+        if (mill2 < mill1) {
+            mill2 += 1000;
+            sec1 += 1;
+        }
+
+        int32_t sec_diff = sec2 - sec1;
+        int32_t smill_diff = mill2 - mill1;
+
+
+        sec_diff += smill_diff / 1000;
+        smill_diff = smill_diff % 1000;
+#if 0
         printf(" sec diff:%d ", sec_diff);
         printf(" milli diff: %d\n", smill_diff);
 #endif
@@ -127,29 +134,27 @@ public:
             // get difference between origin and tx
             SecMilli diff = tdiff(tx_seconds, orig_seconds, tx_millis, orig_millis);
             auto diff_millis = diff.as_millis();
+            if (diff_millis < 100) {
+                state = good;
+            }
+            ntp_at = sent_at;
+            printf("diff_millis: %ld\n", diff_millis);
+            last_ntp = SecMilli(tx_seconds, tx_millis);
             if (diff_millis < 0) {
-                ntp_at = now_millis;
-                last_ntp = SecMilli(tx_seconds, tx_millis);
-                printf("Negative diff ======\n");
+                ;
             } else {
-                // time from send to now, take this off the total time to mark the local millisecond point the server tx time was.
-                ntp_at = now_millis;
-//                std::cout << "Diff time_from_ntp_tx_to_now: " << time_from_ntp_tx_to_now << std::endl;
-                printf("diff_millis: %ld\n", diff_millis);
-                last_ntp = SecMilli(tx_seconds, tx_millis);
-                if (!on_good_signalled) {
-                    if (on_time_good != nullptr) {
-                        on_time_good();
-                    }
-                    on_good_signalled = true;
+                ;
+            }
+            if (state == good && !on_good_signalled) {
+                if (on_time_good != nullptr) {
+                    on_time_good();
                 }
+                on_good_signalled = true;
             }
         }
         if (state == receiving_sample) {
             state = receiving_with_sample;
-        } else {
-            state = good;
-        }
+        } 
         return true;
    }
 };
