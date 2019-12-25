@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 
 #include <stdexcept>
 
@@ -17,6 +18,13 @@ public:
     BasicNtp(const char *host_name, int portno=123) {
         if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
             throw std::runtime_error("ERROR opening socket");
+        int flags;
+        flags = fcntl(sockfd, F_GETFL, 0);
+        if (flags == -1) {
+            throw std::runtime_error("ERROR getting socket flags");
+        }
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+
         if ((server = gethostbyname(host_name)) == NULL)
             throw std::runtime_error("ERROR, no such host");
         bzero((char *)&serv_addr, sizeof(serv_addr));
@@ -37,8 +45,8 @@ public:
     int receive(ntp_packet *packet) {
         int n;
         n = read(sockfd, (char *)packet, sizeof (ntp_packet));
-        if (n < 0)
-            throw std::runtime_error("ERROR reading from socket");
+        if (n <= 0)
+            return 0;
         return n;
     }
 };

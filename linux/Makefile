@@ -1,5 +1,5 @@
-CXX=clang++
-#CXX=clang++-8
+# CXX=clang++
+CXX=clang++-8
 
 CPPFLAGS=-ggdb -std=c++14 -Wall -I../src -I.
 

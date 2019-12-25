@@ -7,20 +7,6 @@
 #include "SecMilli.h"
 #include "ntp.h"
 
-void receive() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(501));
-    std::cout << "receive" << std::endl;
-}
-
-void send_first() {
-    std::cout << "send first" << std::endl;
-}
-
-void send() {
-    std::cout << "send" << std::endl;
-}
-
-
 std::string getCurrentTimestamp()
 {
 	using std::chrono::system_clock;
@@ -43,11 +29,19 @@ std::string getCurrentTimestamp()
 std::random_device r;
 std::default_random_engine e1(r());
 
+
+
 void get_time(MiniNtp& mntp) {
     std::uniform_int_distribution<int> uniform_dist(1000, 6000);
     for (;;) {
         mntp.send();
-        mntp.receive();
+        int count = 0;
+        while (!mntp.receive()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            count++;
+        }
+        std::cout << "Count: " << count << std::endl;
+        std::cout << mntp.sent_at << " : " << mntp.received_at << " diff: " << mntp.received_at - mntp.sent_at << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(uniform_dist(e1)));
     }
 }
@@ -60,14 +54,15 @@ void print_proc(MiniNtp& mntp) {
             std::cout << "local: " << getCurrentTimestamp()
                     << "   RESULT: " << nn.as_iso(buf, sizeof(buf)) << std::endl;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
 
 
 int main() {
     //MiniNtp mntp{"fw13.mianos.com", [](){ printf("time good\n"); }};
-    MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
+    //MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
+    MiniNtp mntp{"10.8.0.1", [](){ printf("time good\n"); }};
 
         
     std::thread timeg(get_time, std::ref(mntp));

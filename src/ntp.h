@@ -22,8 +22,6 @@ class MiniNtp {
     ntp_packet packet;
     BasicNtp *bntp;
     SecMilli last_ntp;
-    unsigned long ntp_at;
-    unsigned long sent_at;
     
     enum {ready=0, receiving_sample=1, receiving_with_sample=2, good=3} state;
     void    (*on_time_good)();
@@ -32,6 +30,9 @@ class MiniNtp {
     std::mutex at_last_mtx;
 #endif
 public:
+    unsigned long ntp_at = 0;
+    unsigned long sent_at = 0;
+    unsigned long received_at = 0;
     MiniNtp(const char *host_name, void (*on_time_good)()=nullptr) :
             state(receiving_sample),
             on_time_good(on_time_good), on_good_signalled(false) {
@@ -111,10 +112,9 @@ public:
 
    bool receive() {
         if (!bntp->receive(&packet)) {
-            printf("No packet\n");
             return false;
         }
-        auto now_millis = millis();
+        received_at = millis();
 
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
@@ -128,7 +128,7 @@ public:
 
         if (!orig_seconds) {
             // set ntp at
-            ntp_at = now_millis;
+            ntp_at = received_at;
             last_ntp = SecMilli(tx_seconds, tx_millis);
         } else {
             // get difference between origin and tx
