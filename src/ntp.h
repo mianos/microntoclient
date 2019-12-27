@@ -85,6 +85,7 @@ public:
         bntp->send(&packet);
    }
 
+#if 0
     SecMilli    tdiff(uint32_t sec2, uint32_t sec1, uint32_t mill2, uint32_t mill1) {
 #if 0
         printf("in sec2: %d", sec2);
@@ -109,6 +110,7 @@ public:
 #endif
         return SecMilli(sec_diff, smill_diff);
     }
+#endif
 
    bool receive() {
         if (!bntp->receive(&packet)) {
@@ -116,35 +118,54 @@ public:
         }
         received_at = millis();
 
+        int32_t rx_seconds = epoch_secs_from_ntp_secs(packet.rxTm_s);
+        int32_t rx_millis = mills_from_ntp_frac(packet.rxTm_f);
+
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
         uint32_t orig_seconds =  epoch_secs_from_ntp_secs(packet.origTm_s);
         uint32_t orig_millis = mills_from_ntp_frac(packet.origTm_f);
 
+       SecMilli t4 = now();
+       // SecMilli duration = tdiff(t4.secs_, orig_seconds, t4.millis_, orig_millis);
+       auto orig = SecMilli(orig_seconds, orig_millis);
+       auto rx = SecMilli(rx_seconds, rx_millis);
+       auto tx = SecMilli(tx_seconds, tx_millis);
+       auto dest = SecMilli(t4.secs_, t4.millis_);
+
+       SecMilli src_to_dest = rx - orig;
+       SecMilli tx_to_src = dest - tx;
+       auto dd = src_to_dest.as_millis() + tx_to_src.as_millis();
+       std::cout << "orig: " << orig
+            << " rx: " << rx
+            << " tx: " << tx
+            << " t4: " << t4
+            << " dd: " << dd
+            << std::endl;
+       std::cout << "src_to_dest: " << src_to_dest.as_millis()
+                 << " tx_to_src: " << tx_to_src.as_millis()
+                 << std::endl;
 #ifdef unix
         std::lock_guard<std::mutex> guard(at_last_mtx);
 #endif
-
         if (!orig_seconds) {
             // set ntp at
             ntp_at = received_at;
             last_ntp = SecMilli(tx_seconds, tx_millis);
         } else {
             // get difference between origin and tx
-            SecMilli diff = tdiff(tx_seconds, orig_seconds, tx_millis, orig_millis);
-            auto diff_millis = diff.as_millis();
-            if (diff_millis < 100) {
+            if (dest.as_millis() > 0) {
                 state = good;
             }
-            ntp_at = sent_at;
-            printf("diff_millis: %ld\n", diff_millis);
-            last_ntp = SecMilli(tx_seconds, tx_millis);
-            if (diff_millis < 0) {
-                ;
-            } else {
-                ;
-            }
+            //ntp_at = sent_at + dd / 2;
+            // ntp_at = sent_at + dd;
+            ntp_at = sent_at + dd / 2;
+            last_ntp = tx;
+            std::cout << "last_ntp: " << last_ntp
+                << " tx: " << tx
+                << " ntp_at: " << ntp_at
+                << std::endl;
             if (state == good && !on_good_signalled) {
                 if (on_time_good != nullptr) {
                     on_time_good();

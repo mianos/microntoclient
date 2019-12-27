@@ -26,10 +26,6 @@ std::string getCurrentTimestamp()
 	return std::string(buffer);
 }
 
-std::random_device r;
-std::default_random_engine e1(r());
-
-
 
 void get_time(MiniNtp& mntp) {
     std::uniform_int_distribution<int> uniform_dist(1000, 6000);
@@ -39,10 +35,12 @@ void get_time(MiniNtp& mntp) {
         while (!mntp.receive()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             count++;
+            if (count > 5000) {
+                std::cout << "looped more then 5000 times, timeout" << std::endl;
+                break;
+            }
         }
-        std::cout << "Count: " << count << std::endl;
-        std::cout << mntp.sent_at << " : " << mntp.received_at << " diff: " << mntp.received_at - mntp.sent_at << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(uniform_dist(e1)));
+        std::this_thread::sleep_for(std::chrono::milliseconds(3123));
     }
 }
 
@@ -51,8 +49,15 @@ void print_proc(MiniNtp& mntp) {
         if (mntp.is_good()) {
             char buf[100];
             auto nn = mntp.now();
-            std::cout << "local: " << getCurrentTimestamp()
-                    << "   RESULT: " << nn.as_iso(buf, sizeof(buf)) << std::endl;
+            auto currentTime = std::chrono::system_clock::now();
+            auto transformed = currentTime.time_since_epoch().count() / 1000000;
+            int millis = transformed % 1000;
+            auto ct = getCurrentTimestamp();
+            std::cout << "local: " << ct
+                    << "   RESULT: " << nn.as_iso(buf, sizeof(buf))
+                    << " diff: " << millis - (int)nn.millis_
+                    << std::endl;
+
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
