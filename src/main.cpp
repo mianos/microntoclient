@@ -85,7 +85,7 @@ void setup() {
   Serial.println(WiFi.localIP());
     mntp = new MiniNtp{"131.84.1.10", [](){ printf("time good\n"); }};
 	get_time_task = new Task(13000, TASK_FOREVER, get_time, &ts, true);
-	receive_task = new Task(1, 20000, receive_proc, &ts);
+	receive_task = new Task(10, 100, receive_proc, &ts);
 	print_task = new Task(200, TASK_FOREVER, print_proc, &ts, true);
   
   delay(1500);
