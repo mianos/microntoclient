@@ -99,11 +99,13 @@ struct SecMilli {
                  millis_);
         return buffer;
     }
+#if defined(__linux__) || defined(__APPLE__)
    friend std::ostream& operator<<(std::ostream& os, const SecMilli& sm) {
         char buffer[40];
         sm.as_iso(buffer, sizeof (buffer));
         os << buffer;
        return os;
    }
+#endif
 };
 

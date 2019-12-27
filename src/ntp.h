@@ -137,6 +137,7 @@ public:
        SecMilli src_to_dest = rx - orig;
        SecMilli tx_to_src = dest - tx;
        auto dd = src_to_dest.as_millis() + tx_to_src.as_millis();
+#ifdef unix
        std::cout << "orig: " << orig
             << " rx: " << rx
             << " tx: " << tx
@@ -146,6 +147,7 @@ public:
        std::cout << "src_to_dest: " << src_to_dest.as_millis()
                  << " tx_to_src: " << tx_to_src.as_millis()
                  << std::endl;
+#endif
 #ifdef unix
         std::lock_guard<std::mutex> guard(at_last_mtx);
 #endif
@@ -162,10 +164,12 @@ public:
             // ntp_at = sent_at + dd;
             ntp_at = sent_at + dd / 2;
             last_ntp = tx;
+#ifdef unix
             std::cout << "last_ntp: " << last_ntp
                 << " tx: " << tx
                 << " ntp_at: " << ntp_at
                 << std::endl;
+#endif
             if (state == good && !on_good_signalled) {
                 if (on_time_good != nullptr) {
                     on_time_good();
