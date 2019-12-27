@@ -7,7 +7,6 @@ class BasicNtp {
     IPAddress     timeServerIP;
 public:
     BasicNtp(const char *host_name, int ntp_port=123) : host_name(host_name), ntp_port(ntp_port) {
-        if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1)
         udp.begin(ntp_port);
     }
     ~BasicNtp() {
