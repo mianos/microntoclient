@@ -33,6 +33,8 @@ public:
     unsigned long ntp_at = 0;
     unsigned long sent_at = 0;
     unsigned long received_at = 0;
+    int receiving = 0;    // counter for mS loops waiting for reply
+    unsigned long last_milli = 0;     // counter for poll periond
     MiniNtp(const char *host_name, void (*on_time_good)()=nullptr) :
             state(receiving_sample),
             on_time_good(on_time_good), on_good_signalled(false) {
@@ -181,6 +183,27 @@ public:
             state = receiving_with_sample;
         } 
         return true;
+   } 
+   void run() {
+        auto now = millis();
+        if (sent_at + 10000 < now || sent_at == 0) {
+            printf("send\n");
+            send();
+            receiving = 1;
+        }
+        if (receiving) {
+            if (sent_at + receiving <= now) {
+                if (receive()) {
+                    receiving = 0;
+                    return;
+                }
+                receiving++;
+                if (receiving == 2000) {
+                    printf("Timeout\n");
+                    receiving = 0;
+                }
+            }
+        }
    }
 };
 

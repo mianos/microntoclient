@@ -28,19 +28,8 @@ std::string getCurrentTimestamp()
 
 
 void get_time(MiniNtp& mntp) {
-    std::uniform_int_distribution<int> uniform_dist(1000, 6000);
     for (;;) {
-        mntp.send();
-        int count = 0;
-        while (!mntp.receive()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            count++;
-            if (count > 5000) {
-                std::cout << "looped more then 5000 times, timeout" << std::endl;
-                break;
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(3123));
+        mntp.run();
     }
 }
 
@@ -66,8 +55,8 @@ void print_proc(MiniNtp& mntp) {
 
 int main() {
     //MiniNtp mntp{"fw13.mianos.com", [](){ printf("time good\n"); }};
-    //MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
-    MiniNtp mntp{"10.8.0.1", [](){ printf("time good\n"); }};
+    MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
+ //   MiniNtp mntp{"10.8.0.1", [](){ printf("time good\n"); }};
 
         
     std::thread timeg(get_time, std::ref(mntp));
