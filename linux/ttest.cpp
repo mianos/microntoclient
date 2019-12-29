@@ -9,19 +9,17 @@
 
 std::string getCurrentTimestamp()
 {
-	using std::chrono::system_clock;
 	auto currentTime = std::chrono::system_clock::now();
 	char buffer[80];
 
-	auto transformed = currentTime.time_since_epoch().count() / 1000000;
-
-	auto millis = transformed % 1000;
-
+    auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(currentTime);
+    auto fraction = currentTime - seconds;
 	std::time_t tt;
-	tt = system_clock::to_time_t ( currentTime );
+	tt = std::chrono::system_clock::to_time_t(currentTime);
 	auto timeinfo = localtime (&tt);
-	strftime (buffer,80,"%F %H:%M:%S",timeinfo);
-	sprintf(buffer, "%s:%03d",buffer,(int)millis);
+	strftime(buffer, 50, "%F %H:%M:%S", timeinfo);
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
+	sprintf(buffer, "%s:%03lld", buffer, milliseconds.count());
 
 	return std::string(buffer);
 }
@@ -38,13 +36,19 @@ void print_proc(MiniNtp& mntp) {
         if (mntp.is_good()) {
             char buf[100];
             auto nn = mntp.now();
-            auto currentTime = std::chrono::system_clock::now();
-            auto transformed = currentTime.time_since_epoch().count() / 1000000;
-            int millis = transformed % 1000;
             auto ct = getCurrentTimestamp();
+
+            auto currentTime = std::chrono::system_clock::now();
+            auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(currentTime);
+            auto fraction = currentTime - seconds;
+            auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
+	        auto ms = milliseconds.count();
+
+
+
             std::cout << "local: " << ct
                     << "   RESULT: " << nn.as_iso(buf, sizeof(buf))
-                    << " diff: " << millis - (int)nn.millis_
+                    << " diff: " << (ms + 1000) - (int)nn.millis_ - 1000
                     << std::endl;
 
         }
