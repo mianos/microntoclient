@@ -19,7 +19,7 @@ std::string getCurrentTimestamp()
 	auto timeinfo = localtime (&tt);
 	strftime(buffer, 50, "%F %H:%M:%S", timeinfo);
     auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
-	sprintf(buffer, "%s:%03lld", buffer, milliseconds.count());
+	sprintf(buffer, "%s:%03ld", buffer, milliseconds.count());
 
 	return std::string(buffer);
 }

@@ -29,15 +29,20 @@ class MiniNtp {
 #ifdef unix
     std::mutex at_last_mtx;
 #endif
+    int poll_period = 10000;
+    int timeout = 2000;
 public:
     unsigned long ntp_at = 0;
     unsigned long sent_at = 0;
     unsigned long received_at = 0;
     int receiving = 0;    // counter for mS loops waiting for reply
     unsigned long last_milli = 0;     // counter for poll periond
-    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr) :
+    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr, int poll_period=10000, int timeout=2000) :
             state(receiving_sample),
-            on_time_good(on_time_good), on_good_signalled(false) {
+            on_time_good(on_time_good),
+            on_good_signalled(false),
+            poll_period(poll_period),
+            timeout(timeout) {
 
         bntp = new BasicNtp(host_name, 123);
         packet = {};
@@ -102,8 +107,8 @@ public:
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
-        uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
-        uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
+        //uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
+        // uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
 
         SecMilli t4 = now();
 
@@ -170,7 +175,7 @@ public:
    } 
    void run() {
         auto now = millis();
-        if (sent_at + 10000 < now || sent_at == 0) {
+        if (sent_at + poll_period < now || sent_at == 0) {
             printf("send\n");
             send();
             receiving = 1;
@@ -182,7 +187,7 @@ public:
                     return;
                 }
                 receiving++;
-                if (receiving == 2000) {
+                if (receiving == timeout) {
                     printf("Timeout\n");
                     receiving = 0;
                 }
