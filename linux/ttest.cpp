@@ -59,8 +59,8 @@ void print_proc(MiniNtp& mntp) {
 
 int main() {
     //MiniNtp mntp{"fw13.mianos.com", [](){ printf("time good\n"); }};
-    MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
- //   MiniNtp mntp{"10.8.0.1", [](){ printf("time good\n"); }};
+//    MiniNtp mntp{"131.84.1.10", [](){ printf("time good\n"); }};
+    MiniNtp mntp{"10.8.0.1", [](){ printf("time good\n"); }};
 
         
     std::thread timeg(get_time, std::ref(mntp));

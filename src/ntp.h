@@ -87,38 +87,14 @@ public:
         bntp->send(&packet);
    }
 
-#if 0
-    SecMilli    tdiff(uint32_t sec2, uint32_t sec1, uint32_t mill2, uint32_t mill1) {
-#if 0
-        printf("in sec2: %d", sec2);
-        printf(" in sec1: %d", sec1);
-        printf(" in milli2: %d", mill2);
-        printf(" in milli1: %d", mill1);
-#endif
-        if (mill2 < mill1) {
-            mill2 += 1000;
-            sec1 += 1;
-        }
-
-        int32_t sec_diff = sec2 - sec1;
-        int32_t smill_diff = mill2 - mill1;
-
-
-        sec_diff += smill_diff / 1000;
-        smill_diff = smill_diff % 1000;
-#if 0
-        printf(" sec diff:%d ", sec_diff);
-        printf(" milli diff: %d\n", smill_diff);
-#endif
-        return SecMilli(sec_diff, smill_diff);
-    }
-#endif
-
    bool receive() {
         if (!bntp->receive(&packet)) {
             return false;
         }
         received_at = millis();
+
+        uint32_t orig_seconds =  epoch_secs_from_ntp_secs(packet.origTm_s);
+        uint32_t orig_millis = mills_from_ntp_frac(packet.origTm_f);
 
         int32_t rx_seconds = epoch_secs_from_ntp_secs(packet.rxTm_s);
         int32_t rx_millis = mills_from_ntp_frac(packet.rxTm_f);
@@ -126,10 +102,11 @@ public:
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
-        uint32_t orig_seconds =  epoch_secs_from_ntp_secs(packet.origTm_s);
-        uint32_t orig_millis = mills_from_ntp_frac(packet.origTm_f);
+        uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
+        uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
 
-       SecMilli t4 = now();
+        SecMilli t4 = now();
+
        // SecMilli duration = tdiff(t4.secs_, orig_seconds, t4.millis_, orig_millis);
        auto orig = SecMilli(orig_seconds, orig_millis);
        auto rx = SecMilli(rx_seconds, rx_millis);
@@ -139,15 +116,24 @@ public:
        SecMilli src_to_dest = rx - orig;
        SecMilli tx_to_src = dest - tx;
        auto dd = src_to_dest.as_millis() + tx_to_src.as_millis();
+       auto offset = ((rx - orig).as_millis() + (dest - tx).as_millis()) / 2;
+       auto delay = (t4 - orig).as_millis() - (tx - rx).as_millis();
+
 #ifdef unix
+       std::cout << "offset: " << offset
+                << " dd " << dd
+                 << " Delay: " << delay << std::endl;
        std::cout << "orig: " << orig
             << " rx: " << rx
             << " tx: " << tx
             << " t4: " << t4
-            << " dd: " << dd
             << std::endl;
        std::cout << "src_to_dest: " << src_to_dest.as_millis()
                  << " tx_to_src: " << tx_to_src.as_millis()
+//                 << " rootDelay: " << root_delay
+ //                << " raw rootDelay: " << packet.rootDelay
+  //               << " rootDispersion: " << root_dispersion
+   //              << " raw rootDispersionay: " << packet.rootDispersion
                  << std::endl;
 #endif
 #ifdef unix
@@ -162,9 +148,7 @@ public:
             if (dest.as_millis() > 0) {
                 state = good;
             }
-            //ntp_at = sent_at + dd / 2;
-            // ntp_at = sent_at + dd;
-            ntp_at = sent_at + dd / 2;
+            ntp_at = millis() - offset;
             last_ntp = tx;
 #ifdef unix
             std::cout << "last_ntp: " << last_ntp
