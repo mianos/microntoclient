@@ -107,7 +107,7 @@ public:
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
-        //uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
+        uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
         // uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
 
         SecMilli t4 = now();
@@ -132,6 +132,8 @@ public:
             << " rx: " << rx
             << " tx: " << tx
             << " t4: " << t4
+            << " root delay: " << root_delay
+            << " root delay raw: " << ntohl(packet.rootDelay)
             << std::endl;
        std::cout << "src_to_dest: " << src_to_dest.as_millis()
                  << " tx_to_src: " << tx_to_src.as_millis()
@@ -173,18 +175,23 @@ public:
         } 
         return true;
    } 
-   void run() {
+   bool run() {
         auto now = millis();
         if (sent_at + poll_period < now || sent_at == 0) {
-            printf("send\n");
             send();
             receiving = 1;
         }
         if (receiving) {
             if (sent_at + receiving <= now) {
                 if (receive()) {
-                    receiving = 0;
-                    return;
+                    if (state != good) {
+                        send();
+                        receiving = 1;
+                        return false;
+                    } else {
+                        receiving = 0;
+                        return true;
+                    }
                 }
                 receiving++;
                 if (receiving == timeout) {
@@ -193,6 +200,7 @@ public:
                 }
             }
         }
+        return false;
    }
 };
 
