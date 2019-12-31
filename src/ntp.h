@@ -18,7 +18,6 @@ extern unsigned long millis();
 
 class MiniNtp {
     const unsigned NTP_TIMESTAMP_DELTA = 2208988800;
-//    const double millis_to_ntp_frac = 1000.0 / 4294967296.0;
     ntp_packet packet;
     BasicNtp *bntp;
     SecMilli last_ntp;
@@ -31,18 +30,22 @@ class MiniNtp {
 #endif
     int poll_period = 10000;
     int timeout = 2000;
+    int max_adjustment = 2;   // maximum we will adjust the time by if state is good
+    int drift_sign = 0;
+    int drift_age = 0;
 public:
     unsigned long ntp_at = 0;
     unsigned long sent_at = 0;
     unsigned long received_at = 0;
     int receiving = 0;    // counter for mS loops waiting for reply
     unsigned long last_milli = 0;     // counter for poll periond
-    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr, int poll_period=10000, int timeout=2000) :
+    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr, int poll_period=10000, int timeout=2000, int max_adjustment=3) :
             state(receiving_sample),
             on_time_good(on_time_good),
             on_good_signalled(false),
             poll_period(poll_period),
-            timeout(timeout) {
+            timeout(timeout),
+            max_adjustment(max_adjustment) {
 
         bntp = new BasicNtp(host_name, 123);
         packet = {};
@@ -107,8 +110,6 @@ public:
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
-        uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
-        // uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
 
         SecMilli t4 = now();
 
@@ -118,13 +119,14 @@ public:
        auto tx = SecMilli(tx_seconds, tx_millis);
        auto dest = SecMilli(t4.secs_, t4.millis_);
 
+       auto offset = ((rx - orig).as_millis() + (dest - tx).as_millis()) / 2;
+       //auto delay = (t4 - orig).as_millis() - (tx - rx).as_millis();
+
+#if 0
        SecMilli src_to_dest = rx - orig;
        SecMilli tx_to_src = dest - tx;
-       auto dd = src_to_dest.as_millis() + tx_to_src.as_millis();
-       auto offset = ((rx - orig).as_millis() + (dest - tx).as_millis()) / 2;
-       auto delay = (t4 - orig).as_millis() - (tx - rx).as_millis();
-
-#ifdef unix
+        uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
+        // uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
        std::cout << "offset: " << offset
                 << " dd " << dd
                  << " Delay: " << delay << std::endl;
@@ -148,16 +150,58 @@ public:
 #endif
         if (!orig_seconds) {
             // set ntp at
-            ntp_at = received_at;
             last_ntp = SecMilli(tx_seconds, tx_millis);
+            //ntp_at = received_at;
+            ntp_at = sent_at + (received_at - sent_at) / 2;
         } else {
-            // get difference between origin and tx
-            if (dest.as_millis() > 0) {
+            int adjustment = (t4 - (tx + offset)).as_millis();
+
+            if (state == receiving_with_sample && adjustment <= 1) {
                 state = good;
+                drift_age = 0;
+            } else {
+                printf("Adjustment: %d\n", adjustment);
+                if (adjustment > 0) {
+                    drift_age++;
+                    if (drift_age > max_adjustment) {
+                        printf(" =============== subtract\n");
+                        drift_sign = 0;
+                        drift_age = 0;
+                        offset++;
+                    } else {
+                        drift_sign = 1;
+                        //std::cout << " SKIP drift sign +: " << drift_sign << " age: " << drift_age << std::endl;
+                        return true;
+                    }
+                } else if (adjustment < 0) {
+                    drift_age++;
+                    if (drift_age > max_adjustment) {
+                        printf(" ========== add\n");
+                        drift_sign = 0;
+                        drift_age = 0;
+                        offset--;
+                    } else {
+                        drift_sign = -1;
+                        // std::cout << " SKIP drift sign -: " << drift_sign << " age: " << drift_age << std::endl;
+                        return true;
+                    }
+                } else if (drift_sign) {        // and adjustment == 0
+                    drift_sign = 0;
+                    drift_age = 0;
+                    //std::cout << " drift sign/age reset on adjustment to 0 : " << drift_sign << std::endl;
+                }
             }
-            ntp_at = millis() - offset;
+
+#if 0
+            if (adjustment > max_adjustment) {
+                printf("Adjustment: %d out of range, dropping", adjustment);
+                return true;    // return true as the time was received, but drop this update
+            }
+#endif
+            ntp_at = received_at - offset;
             last_ntp = tx;
-#ifdef unix
+            // get difference between origin and tx
+#if 0
             std::cout << "last_ntp: " << last_ntp
                 << " tx: " << tx
                 << " ntp_at: " << ntp_at
