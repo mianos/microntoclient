@@ -162,10 +162,11 @@ public:
                 state = good;
                 drift_age = 0;
             } else {
-                printf("Adjustment: %d\n", adjustment);
+                printf("Adjustment: %d state %d\n", adjustment, state);
+                int adjust_threshold = state != good ? 1 : max_adjustment;
                 if (adjustment > 0) {
                     drift_age++;
-                    if (drift_age > max_adjustment) {
+                    if (drift_age > adjust_threshold) {
                         printf(" =============== subtract\n");
                         drift_sign = 0;
                         drift_age = 0;
@@ -177,7 +178,7 @@ public:
                     }
                 } else if (adjustment < 0) {
                     drift_age++;
-                    if (drift_age > max_adjustment) {
+                    if (drift_age > adjust_threshold) {
                         printf(" ========== add\n");
                         drift_sign = 0;
                         drift_age = 0;
@@ -193,22 +194,8 @@ public:
                     //std::cout << " drift sign/age reset on adjustment to 0 : " << drift_sign << std::endl;
                 }
             }
-
-#if 0
-            if (adjustment > max_adjustment) {
-                printf("Adjustment: %d out of range, dropping", adjustment);
-                return true;    // return true as the time was received, but drop this update
-            }
-#endif
             ntp_at = received_at - middle;
             last_ntp = tx;
-            // get difference between origin and tx
-#if 0
-            std::cout << "last_ntp: " << last_ntp
-                << " tx: " << tx
-                << " ntp_at: " << ntp_at
-                << std::endl;
-#endif
             if (state == good && !on_good_signalled) {
                 if (on_time_good != nullptr) {
                     on_time_good();
