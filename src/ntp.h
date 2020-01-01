@@ -30,7 +30,7 @@ class MiniNtp {
 #endif
     int poll_period = 10000;
     int timeout = 2000;
-    int max_adjustment = 2;   // maximum we will adjust the time by if state is good
+    int max_adjustment = 5;   // maximum we will adjust the time by if state is good
     int drift_sign = 0;
     int drift_age = 0;
 public:
@@ -39,7 +39,7 @@ public:
     unsigned long received_at = 0;
     int receiving = 0;    // counter for mS loops waiting for reply
     unsigned long last_milli = 0;     // counter for poll periond
-    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr, int poll_period=10000, int timeout=2000, int max_adjustment=3) :
+    MiniNtp(const char *host_name, void (*on_time_good)()=nullptr, int poll_period=10000, int timeout=2000, int max_adjustment=5) :
             state(receiving_sample),
             on_time_good(on_time_good),
             on_good_signalled(false),
