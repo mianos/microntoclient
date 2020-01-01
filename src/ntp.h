@@ -110,8 +110,10 @@ public:
         int32_t tx_seconds = epoch_secs_from_ntp_secs(packet.txTm_s);
         int32_t tx_millis = mills_from_ntp_frac(packet.txTm_f);
 
-
         SecMilli t4 = now();
+
+        // std::cout << "Poll: " << (int)packet.poll << std::endl;
+
 
        // SecMilli duration = tdiff(t4.secs_, orig_seconds, t4.millis_, orig_millis);
        auto orig = SecMilli(orig_seconds, orig_millis);
@@ -119,7 +121,7 @@ public:
        auto tx = SecMilli(tx_seconds, tx_millis);
        auto dest = SecMilli(t4.secs_, t4.millis_);
 
-       auto offset = ((rx - orig).as_millis() + (dest - tx).as_millis()) / 2;
+       auto middle = ((rx - orig).as_millis() + (dest - tx).as_millis()) / 2;
        //auto delay = (t4 - orig).as_millis() - (tx - rx).as_millis();
 
 #if 0
@@ -127,7 +129,7 @@ public:
        SecMilli tx_to_src = dest - tx;
         uint32_t root_delay = mills_from_ntp_frac(packet.rootDelay);
         // uint32_t root_dispersion = mills_from_ntp_frac(packet.rootDispersion);
-       std::cout << "offset: " << offset
+       std::cout << "middle: " << middle
                 << " dd " << dd
                  << " Delay: " << delay << std::endl;
        std::cout << "orig: " << orig
@@ -154,7 +156,7 @@ public:
             //ntp_at = received_at;
             ntp_at = sent_at + (received_at - sent_at) / 2;
         } else {
-            int adjustment = (t4 - (tx + offset)).as_millis();
+            int adjustment = (t4 - (tx + middle)).as_millis();
 
             if (state == receiving_with_sample && adjustment <= 1) {
                 state = good;
@@ -167,7 +169,7 @@ public:
                         printf(" =============== subtract\n");
                         drift_sign = 0;
                         drift_age = 0;
-                        offset++;
+                        middle++;
                     } else {
                         drift_sign = 1;
                         //std::cout << " SKIP drift sign +: " << drift_sign << " age: " << drift_age << std::endl;
@@ -179,7 +181,7 @@ public:
                         printf(" ========== add\n");
                         drift_sign = 0;
                         drift_age = 0;
-                        offset--;
+                        middle--;
                     } else {
                         drift_sign = -1;
                         // std::cout << " SKIP drift sign -: " << drift_sign << " age: " << drift_age << std::endl;
@@ -198,7 +200,7 @@ public:
                 return true;    // return true as the time was received, but drop this update
             }
 #endif
-            ntp_at = received_at - offset;
+            ntp_at = received_at - middle;
             last_ntp = tx;
             // get difference between origin and tx
 #if 0
@@ -228,14 +230,8 @@ public:
         if (receiving) {
             if (sent_at + receiving <= now) {
                 if (receive()) {
-                    if (state != good) {
-                        send();
-                        receiving = 1;
-                        return false;
-                    } else {
-                        receiving = 0;
-                        return true;
-                    }
+                    receiving = 0;
+                    return true;
                 }
                 receiving++;
                 if (receiving == timeout) {
