@@ -162,7 +162,7 @@ public:
                 state = good;
                 drift_age = 0;
             } else {
-                printf("Adjustment: %d state %d\n", adjustment, state);
+                // printf("Adjustment: %d state %d\n", adjustment, state);
                 int adjust_threshold = state != good ? 1 : max_adjustment;
                 if (adjustment > 0) {
                     drift_age++;
