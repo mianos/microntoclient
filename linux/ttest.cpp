@@ -39,7 +39,7 @@ void print(MiniNtp& mntp) {
     auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(fraction);
     auto ms = milliseconds.count();
     std::cout << "local: " << ct
-            << "   RESULT: " << nn.as_iso(buf, sizeof(buf))
+            << "   RESULT: " << nn.local(buf, sizeof(buf), 10)
             << " diff: " << (ms + 1000) - (int)nn.millis_ - 1000
             << std::endl;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <time.h>
+
 #include <sys/types.h>
 
 struct SecMilli {
@@ -27,53 +28,24 @@ struct SecMilli {
 
     SecMilli operator-(const SecMilli& const_rhs) {
         SecMilli rhs(const_rhs);
-#if 0
-        printf("in sec2: %lu", secs_);
-        printf(" in sec1: %lu", rhs.secs_);
-        printf(" in milli2: %ld", rhs.millis_);
-        printf(" in milli1: %ld", millis_);
-#endif
-#if 0
-        if (rhs.millis_ > millis_) {
-            millis_ -= 1000;
-            rhs.secs_ += 1;
-        }
-#endif
         int32_t sec_diff = secs_ - rhs.secs_;
         int32_t smill_diff = millis_ - rhs.millis_;
 
 
         sec_diff += smill_diff / 1000;
         smill_diff = smill_diff % 1000;
-#if 0
-        printf(" sec diff:%d ", sec_diff);
-        printf(" milli diff: %d\n", smill_diff);
-#endif
         return SecMilli(sec_diff, smill_diff);
     }
 
     SecMilli operator+(const SecMilli& const_rhs) {
         SecMilli rhs(const_rhs);
-#if 1
-        printf("in sec2: %lu", secs_);
-        printf(" in sec1: %lu", rhs.secs_);
-        printf(" in milli2: %ld", rhs.millis_);
-        printf(" in milli1: %ld", millis_);
-#endif
         int32_t sec_add = secs_ - rhs.secs_;
         int32_t smill_add = rhs.millis_ - millis_;
 
         sec_add += smill_add / 1000;
         smill_add = smill_add % 1000;
-#if 1
-        printf(" sec add:%d ", sec_add);
-        printf(" milli add: %d\n", smill_add);
-#endif
         return SecMilli(sec_add, smill_add);
     }
-
-
-
 
     bool not_null() {
         return secs_ || millis_;
@@ -93,6 +65,28 @@ struct SecMilli {
                  timeinfo.tm_year + 1900,
                  timeinfo.tm_mon,
                  timeinfo.tm_mday,
+                 timeinfo.tm_hour,
+                 timeinfo.tm_min,
+                 timeinfo.tm_sec,
+                 millis_);
+        return buffer;
+    }
+    char *local(char *buffer, int buffer_len) const {
+        struct tm timeinfo;
+        time_t tt_secs = secs_;
+        localtime_r(&tt_secs, &timeinfo);
+        snprintf(buffer, buffer_len, "%02d:%02d:%02d.%lu",
+                 timeinfo.tm_hour % 12,
+                 timeinfo.tm_min,
+                 timeinfo.tm_sec,
+                 millis_);
+        return buffer;
+    }
+    char *local(char *buffer, int buffer_len, int hours_offset, bool dst) const {
+        struct tm timeinfo;
+        time_t tt_secs = secs_ + 3600 * hours_offset + (dst ? 3600 : 0);
+        gmtime_r(&tt_secs, &timeinfo);
+        snprintf(buffer, buffer_len, "%02d:%02d:%02d.%lu",
                  timeinfo.tm_hour,
                  timeinfo.tm_min,
                  timeinfo.tm_sec,
